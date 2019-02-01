@@ -183,7 +183,7 @@ class RestServer
             $this->config = new Config();
         }
         $this->root = $dir;
-        $this->serverpath = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        $this->serverpath = ROOTPATH;
         $this->setAuthHandler(new \Servit\Restsrv\RestServer\Auth\HTTPAuthServer);
 
     }
@@ -338,7 +338,7 @@ class RestServer
     
     public function addClass($class, $basePath = '',$sys='')
     {
-        $path = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        $path = ROOTPATH;
         if($sys) $sys .='/';
         $filepath = $path.$this->root.'controllers/'.$sys.$class.'.php';
         if (file_exists($filepath)) {
