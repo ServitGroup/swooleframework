@@ -6,23 +6,102 @@ namespace Servit\Restsrv\RestServer;
 
 // use Servit\Restsrv\RestServer\RestRbac;
 use Servit\Restsrv\RestServer\RestFormat;
-// use Servit\Restsrv\RestServer\RestException;
-// use Servit\Restsrv\RestServer\RestJwt;
-// use Servit\Restsrv\RestServer\RestRbac;
-// use Servit\Restsrv\RestServer\RestController;
-// use Servit\Restsrv\RestServer\AuthServer;
-// use Servit\Restsrv\RestServer\Auth\HTTPAuthServer;
+use Servit\Restsrv\RestServer\RestException;
+use Servit\Restsrv\RestServer\RestJwt;
+use Servit\Restsrv\RestServer\RestRbac;
+use Servit\Restsrv\RestServer\RestController;
+use Servit\Restsrv\RestServer\AuthServer;
+use Servit\Restsrv\RestServer\Auth\HTTPAuthServer;
 
-// use Servit\Restsrv\Libs\Request;
-// use Exception;
-// use ReflectionClass;
-// use ReflectionObject;
-// use ReflectionMethod;
-// use DOMDocument;
-// use Illuminate\Database\Capsule\Manager as Capsule;
-// use Illuminate\Events\Dispatcher;
-// use Illuminate\Container\Container;
+use Servit\Restsrv\Libs\Request;
+use Exception;
+use ReflectionClass;
+use ReflectionObject;
+use ReflectionMethod;
+use DOMDocument;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Events\Dispatcher;
+use Illuminate\Container\Container;
 
+//------------- INIT----------------------------------------
+//------------- INIT----------------------------------------
+// Optional array of authorized client IPs for a bit of security
+$config["hostsAllowed"] = [];
+
+if (!function_exists('implodeKV')) {
+    function implodeKV($glueKV, $gluePair, $KVarray)
+    {
+        if (is_object($KVarray)) {
+            $KVarray = json_decode(json_encode($KVarray), true);
+        }
+        $t = array();
+        foreach ($KVarray as $key => $val) {
+            if (is_array($val)) {
+                $val = implodeKV(':', ',', $val);
+            } elseif (is_object($val)) {
+                $val = json_decode(json_encode($val), true);
+                $val = implodeKV(':', ',', $val);
+            }
+
+            if (is_int($key)) {
+                $t[] = $val;
+            } else {
+                $t[] = $key . $glueKV . $val;
+            }
+        }
+        return implode($gluePair, $t);
+    }
+}
+
+if (!function_exists('consolelog')) {
+    function consolelog($status = 200)
+    {
+        $lists = func_get_args();
+        $status = '';
+        $status = implodeKV(':', ' ', $lists);
+        if (isset($_SERVER["REMOTE_ADDR"]) && !empty($_SERVER["REMOTE_ADDR"])) {
+            $raddr = $_SERVER["REMOTE_ADDR"];
+        } else {
+            $raddr = '127.0.0.1';
+        }
+        if (isset($_SERVER["REMOTE_PORT"]) && !empty($_SERVER["REMOTE_PORT"])) {
+            $rport = $_SERVER["REMOTE_PORT"];
+        } else {
+            $rport = '8000';
+        }
+
+        if (isset($_SERVER["REQUEST_URI"]) && !empty($_SERVER["REQUEST_URI"])) {
+            $ruri = $_SERVER["REQUEST_URI"];
+        } else {
+            $ruri = '/console';
+        }
+        file_put_contents(
+            "php://stdout",
+            sprintf(
+                "[%s] %s:%s [%s]:%s \n",
+                date("D M j H:i:s Y"),
+                $raddr,
+                $rport,
+                $status,
+                $ruri
+            )
+        );
+    }
+} // end-of-check funtion exist
+
+if (!function_exists('logAccess')) {
+    function logAccess($status = 200)
+    {
+        file_put_contents("php://stdout", sprintf(
+            "[%s] %s:%s [%s]: %s\n",
+            date("D M j H:i:s Y"),
+            $_SERVER["REMOTE_ADDR"],
+            $_SERVER["REMOTE_PORT"],
+            $status,
+            $_SERVER["REQUEST_URI"]
+        ));
+    }
+}
 //------------- INIT----------------------------------------
 
 /**
@@ -30,8 +109,7 @@ use Servit\Restsrv\RestServer\RestFormat;
  *
  * @author jacob
  */
-class RestServer
-{
+class RestnewServer {
     //@todo add type hint
     public $url;
     public $method;
@@ -50,7 +128,7 @@ class RestServer
     protected $capsule;
     protected $authHandler = null;
     private $_token = null; // string payload  header.payload.sinager
-
+    protected $data;
     //----------swoole object------------------
     protected $http;
     protected $request;
@@ -133,7 +211,11 @@ class RestServer
 
     public function getMethod()
     {
-        $method = $this->request->server['request_method'];
+        if($this->request){
+            $method = $this->request->server['request_method'];
+        } else {
+            $method = $_SERVER['REQUEST_METHOD'] ?: 'GET';
+        }
         return $method;
     }
 
@@ -172,8 +254,9 @@ class RestServer
     public function getData()
     {
         if ($this->data) {
-
             return $this->data;
+        } else {
+            return new Request($this->jsonAssoc);
         }
     }
 
@@ -610,30 +693,34 @@ class RestServer
         }
     }
 
-    public function handle($request, $response)
+    public function handle($request=null, $response=null)
     {
         $this->request = $request;
         $this->response = $response;
         $this->code = 200;
         $this->format = RestFormat::HTML;
         $this->result = '';
-        $request_method = $request->server['request_method'];
-        $request_uri = $request->server['request_uri'];
-        $_GET = $request->get ?? [];
-        $_COOKIE = $request->cookie ?? [];
-        $_FILES = $request->files ?? [];
-        $_SERVER['REQUEST_URI'] = $request->server['request_uri'];
-        $_SERVER['REQUEST_METHOD'] = $request->server['request_method'];
-        $_SERVER['REMOTE_ADDR'] = $request->server['remote_addr'];
-        $_SERVER["PATH_INFO"] = $request->server["path_info"];
-        $_SERVER["REQUEST_TIME"] = $request->server["request_time"];
-        $_SERVER["REQUEST_TIME_FLOAT"] = $request->server["request_time_float"];
-        $_SERVER["SERVER_PORT"] = $request->server["server_port"];
-        $_SERVER["REMOTE_PORT"] = $request->server["remote_port"];
-        $_SERVER["MASTER_TIME"] = $request->server["master_time"];
-        $_SERVER["SERVER_PROTOCOL"] = $request->server["server_protocol"];
-        $_SERVER["SERVER_SOFTWARE"] = $request->server["server_software"];
-        $_HEADER = $request->header;
+        if($request){
+            $request_method = $request->server['request_method'];
+            $request_uri = $request->server['request_uri'];
+            $_GET = $request->get ?? [];
+            $_COOKIE = $request->cookie ?? [];
+            $_FILES = $request->files ?? [];
+            $_SERVER['REQUEST_URI'] = $request->server['request_uri'];
+            $_SERVER['REQUEST_METHOD'] = $request->server['request_method'];
+            $_SERVER['REMOTE_ADDR'] = $request->server['remote_addr'];
+            $_SERVER["PATH_INFO"] = $request->server["path_info"];
+            $_SERVER["REQUEST_TIME"] = $request->server["request_time"];
+            $_SERVER["REQUEST_TIME_FLOAT"] = $request->server["request_time_float"];
+            $_SERVER["SERVER_PORT"] = $request->server["server_port"];
+            $_SERVER["REMOTE_PORT"] = $request->server["remote_port"];
+            $_SERVER["MASTER_TIME"] = $request->server["master_time"];
+            $_SERVER["SERVER_PROTOCOL"] = $request->server["server_protocol"];
+            $_SERVER["SERVER_SOFTWARE"] = $request->server["server_software"];
+            $_HEADER = $request->header;
+        } else {
+            $this->data = $this->getData();
+        }
 
         $this->url = $this->getPath();
         $this->method = $this->getMethod();
