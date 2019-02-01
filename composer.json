@@ -6,7 +6,7 @@
         "email": "thongchai@servit.co.th"
     }],
     "require": {
-        "php": ">=7.20"
+        "php": ">=7.2.0"
     },
     "autoload": {
         "psr-4": {
