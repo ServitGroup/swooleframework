@@ -33,6 +33,7 @@ use Servit\Restsrv\RestServer\RestRbac;
 use Servit\Restsrv\RestServer\RestController;
 use Servit\Restsrv\RestServer\AuthServer;
 use Servit\Restsrv\RestServer\Auth\HTTPAuthServer;
+use Servit\Restsrv\Cfg\Config;
 
 use Servit\Restsrv\Libs\Request;
 use Exception;
