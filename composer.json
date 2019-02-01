@@ -1,0 +1,17 @@
+{
+    "name": "servit/restsrv",
+    "description": "Servit Restful Web Server",
+    "authors": [{
+        "name": "Thongchai Lim",
+        "email": "thongchai@servit.co.th"
+    }],
+    "require": {
+        "php": ">=7.20"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Servit\\Restsrv\\": ""
+        }
+    }
+}
