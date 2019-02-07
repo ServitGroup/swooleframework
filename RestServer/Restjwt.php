@@ -1,21 +1,21 @@
 <?php
 namespace Servit\Restsrv\RestServer;
 
-use Lcobucci\JWT\Signer\Hmac\Sha256;
-use Lcobucci\JWT\Signer;
-use Lcobucci\JWT\Parser;
-use Lcobucci\JWT\ValidationData;
 use Lcobucci\JWT\Builder;
+use Lcobucci\JWT\Parser;
+use Lcobucci\JWT\Signer;
+use Lcobucci\JWT\Signer\Hmac\Sha256;
 use Lcobucci\JWT\Token;
-use Servit\Restsrv\RestServer\RestException;
+use Lcobucci\JWT\ValidationData;
 use Servit\Restsrv\Libs\Request;
+use Servit\Restsrv\RestServer\RestException;
 
 class Restjwt
 {
 
     private $token = null; // String   header.palyload.signature
-    public $signer=null ; //obj of Lcobucci\JWT\Signer
-    private $jwt = null;  //obj of Lcobucci\JWT\Token;
+    public $signer = null; //obj of Lcobucci\JWT\Signer
+    private $jwt = null; //obj of Lcobucci\JWT\Token;
     public $_status = false;
     private $_verify = false;
     private $_validate = false;
@@ -24,18 +24,17 @@ class Restjwt
     {
         $this->signer = new Sha256();
         $this->input = Request::getInstance();
-        $this->token = isset($this->input->token) ? $this->input->token:'';
+        $this->token = isset($this->input->token) ? $this->input->token : '';
         // $this->token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImp0aSI6IjRmMWcyM2ExMmFhIn0.eyJpc3MiOiIxMjcuMC4wLjEiLCJhdWQiOiIxMjcuMC4wLjEiLCJqdGkiOiI0ZjFnMjNhMTJhYSIsImlhdCI6MTUwMTc1NjMyMywiZXhwIjoxNTAxNzk5NTIzLCJ1c2VybmFtZSI6ImFkbWluIiwidWlkIjoxLCJyb2xlIjoiYWRtaW4iLCJsZXZlbCI6IkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkYifQ.03GVyuD08Enl-7hKqU_Z7c4gDp3q2vYQrqMPeRJjoaw';
         $this->initjwtobj();
     }
-
 
     public function getStatus()
     {
         return $this->_status;
     }
 
-     // return  String   header.palyload.signature
+    // return  String   header.palyload.signature
     public function getToken()
     {
         return $this->token;
@@ -54,7 +53,7 @@ class Restjwt
     {
         if ($this->jwt && $this->_status) {
             if ($datas == []) {
-                $datas = ['username','uid','role','level','iss','aud','jti','iat','exp',];
+                $datas = ['username', 'uid', 'role', 'level', 'iss', 'aud', 'jti', 'iat', 'exp'];
             }
             $o = new \stdClass();
             foreach ($datas as $data) {
@@ -66,15 +65,14 @@ class Restjwt
         }
     }
 
-
     /***---- gen token for jwt ----
-        {
-            username: '',
-            uid: 1 ,
-            role: 'admin',
-            level: 'FF'
-        }
-    */
+    {
+    username: '',
+    uid: 1 ,
+    role: 'admin',
+    level: 'FF'
+    }
+     */
     public function token($user = null)
     {
 
@@ -90,45 +88,45 @@ class Restjwt
             $remotehost = $_SERVER['REMOTE_ADDR'];
             $builder = new Builder();
             $builder->setIssuer($remotehost) // Configures the issuer (iss claim)
-                    ->setAudience($remotehost) // Configures the audience (aud claim)
-                    ->setId(uuid(), true) // Configures the id (jti claim), replicating as a header item
-                    ->setIssuedAt($now)
-                    ->setExpiration($now + EXPTIME)
-                    ->set('username', $user->username)
-                    ->set('uid', $user->id)
-                    ->set('role', $user->role)
-                    ->set('level', $user->level)
-                    ->sign($this->signer, APP_KEY);
+                ->setAudience($remotehost) // Configures the audience (aud claim)
+                ->setId(uuid(), true) // Configures the id (jti claim), replicating as a header item
+                ->setIssuedAt($now)
+                ->setExpiration($now + EXPTIME)
+                ->set('username', $user->username)
+                ->set('uid', $user->id)
+                ->set('role', $user->role)
+                ->set('level', $user->level)
+                ->sign($this->signer, APP_KEY);
             return $builder->getToken()->__toString();
-        } return null;
+        }return null;
     }
 
     // get old token  and gen new token for add time
     // return payload headr.paylaod.sginer
     public function jwtrefreshobj()
     {
-            $o = new \stdClass();
-            $o->verify = $this->tokenverify();
-            $o->status  = $this->chkauth();
-            $remotehost = $_SERVER['REMOTE_ADDR'];
-            $host = $_SERVER['HTTP_HOST'];
-            $now = time();
+        $o = new \stdClass();
+        $o->verify = $this->tokenverify();
+        $o->status = $this->chkauth();
+        $remotehost = $_SERVER['REMOTE_ADDR'];
+        $host = $_SERVER['HTTP_HOST'];
+        $now = time();
         if ($o->status && $o->verify) {
             $builder = new Builder();
             $builder->setIssuer($host) // Configures the issuer (iss claim)
-            ->setAudience($remotehost) // Configures the audience (aud claim)
-            ->setId('4f1g23a12aa', true) // Configures the id (jti claim), replicating as a header item
-            ->setIssuedAt($now)
-            ->setExpiration($now + EXPTIME)
-            ->set('username', $this->jwt->getClaim('username'))
-            ->set('uid', $this->jwt->getClaim('uid'))
-            ->set('role', $this->jwt->getClaim('role'))
-            ->set('level', $this->jwt->getClaim('level'))
-            ->sign($this->signer, APP_KEY);
+                ->setAudience($remotehost) // Configures the audience (aud claim)
+                ->setId('4f1g23a12aa', true) // Configures the id (jti claim), replicating as a header item
+                ->setIssuedAt($now)
+                ->setExpiration($now + EXPTIME)
+                ->set('username', $this->jwt->getClaim('username'))
+                ->set('uid', $this->jwt->getClaim('uid'))
+                ->set('role', $this->jwt->getClaim('role'))
+                ->set('level', $this->jwt->getClaim('level'))
+                ->sign($this->signer, APP_KEY);
             $o->jwt = $builder->getToken()->__toString();
             $o->token = $builder->getToken()->__toString();
         }
-            return $o;
+        return $o;
     }
 
     //---- chk for verify signer and validate data  all pass ---
@@ -136,7 +134,7 @@ class Restjwt
     public function chkauth()
     {
         $o = new \stdClass();
-        $o->status =  false;
+        $o->status = false;
         $o->verify = false;
         // dump($this);
         if ($this->jwt) {
@@ -148,7 +146,7 @@ class Restjwt
                 $validationData->setIssuer($host);
                 $validationData->setAudience($remotehost);
                 $validate = $this->jwt->validate($validationData);
-                $o->status =  $validate;
+                $o->status = $validate;
             }
         }
         if ($o->status) {
@@ -174,7 +172,7 @@ class Restjwt
      * */
     private function getAuthorizationHeader()
     {
-            $headers = null;
+        $headers = null;
         if (isset($_SERVER['Authorization'])) {
             $headers = trim($_SERVER["Authorization"]);
         } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
@@ -188,14 +186,16 @@ class Restjwt
                 $headers = trim($requestHeaders['Authorization']);
             }
         }
-            return $headers;
+        return $headers;
     }
 
     //---- gen  Lcobucci\JWT\Token; obj form toekn
     private function initjwtobj()
     {
-        $remotehost = $_SERVER['REMOTE_ADDR'];
-        $host = $_SERVER['HTTP_HOST'];
+        // $remotehost = $_SERVER['REMOTE_ADDR'];
+        // $host = $_SERVER['HTTP_HOST'];
+        $remotehost = 'yyyy';
+        $host = 'xxx';
         if ($this->token) {
             $token = (new Parser())->parse($this->token);
             $this->_verify = $token->verify($this->signer, APP_KEY);

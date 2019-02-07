@@ -12,7 +12,7 @@ use Servit\Restsrv\RestServer\RestRbac;
 use Servit\Restsrv\RestServer\RestController;
 use Servit\Restsrv\RestServer\AuthServer;
 use Servit\Restsrv\RestServer\Auth\HTTPAuthServer;
-
+use Servit\Restsrv\Cfg\Config;
 use Servit\Restsrv\Libs\Request;
 use Exception;
 use ReflectionClass;
@@ -140,7 +140,7 @@ class RestnewServer {
      *
      * @param string $mode The mode, either debug or production
      */
-    public function __construct(\Servit\Restsrv\Cfg\Config $config = null, $mode = 'debug', $realm = 'Rest Server')
+    public function __construct(Config $config = null, $mode = 'debug', $realm = 'Rest Server')
     {
         $this->mode = $mode;
         $this->format = RestFormat::HTML;
@@ -168,7 +168,7 @@ class RestnewServer {
             $this->config = new Config();
         }
         $this->root = $dir;
-        $this->serverpath = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        $this->serverpath = ROOTPATH;
         $this->setAuthHandler(new \Servit\Restsrv\RestServer\Auth\HTTPAuthServer);
     }
 
@@ -262,11 +262,30 @@ class RestnewServer {
 
     public function sendData($data)
     {
-        if (is_array($data)) {
-            $this->format = RestFormat::JSON;
-            $this->result = json_encode($data, JSON_UNESCAPED_UNICODE);
+        if(SWOOLEMODE){
+            if (is_array($data)) {
+                $this->format = RestFormat::JSON;
+                $this->result = json_encode($data, JSON_UNESCAPED_UNICODE);
+            } else {
+                $this->result = $data;
+            }
         } else {
-            $this->result = $data;
+            header("Cache-Control: no-cache, must-revalidate");
+            header("Expires: 0");
+            header('Content-Type: ' . $this->format);
+            if ($this->useCors) {
+                $this->corsHeaders();
+            }
+            $options = 0;
+            if ($this->mode == 'debug' && defined('JSON_PRETTY_PRINT')) {
+                $options = JSON_PRETTY_PRINT;
+            }
+
+            if (defined('JSON_UNESCAPED_UNICODE')) {
+                $options = $options | JSON_UNESCAPED_UNICODE;
+            }
+            echo json_encode($data, $options);
+            exit();
         }
     }
 
@@ -285,7 +304,7 @@ class RestnewServer {
         $urls = isset($this->map[$this->method]) ? $this->map[$this->method] : null;
         if (!$urls) {
             return null;
-        }
+        }   
 
         foreach ($urls as $url => $call) {
             $args = $call[2];
@@ -563,7 +582,11 @@ class RestnewServer {
 
     public function addClass($class, $basePath = '', $sys = '')
     {
-        $path = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        if($_SERVER["DOCUMENT_ROOT"]){
+            $path = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        } else {
+            $path = ROOTPATH;
+        }
         if ($sys) {
             $sys .= '/';
         }
@@ -592,8 +615,7 @@ class RestnewServer {
         if ($sys) {
             $sys .= '/';
         }
-
-        $path = glob($_SERVER["DOCUMENT_ROOT"])[0];
+        $path = ROOTPATH;
         $filepath = $path . $this->root . 'controllers/' . $sys . $class . '.php';
         if (file_exists($filepath)) {
             require_once $filepath;
@@ -626,7 +648,11 @@ class RestnewServer {
                 if (isset($reflection)) {
                     if ($reflection->hasMethod($method)) {
                         $obj = is_string($class) ? new $class() : $class;
-                        $obj->$method();
+                        $rs =$obj->$method();
+                        if(SWOOLEMODE){
+                            dump($rs);
+                            return $this->result = $rs;
+                        }
                         return;
                     }
                 }
@@ -634,7 +660,11 @@ class RestnewServer {
         } // end foreach
         if ($roottheme && $roottheme->hasMethod($method)) {
             $obj = is_string($class) ? new $class() : $class;
-            $obj->$method();
+            $rs = $obj->$method();
+            if (SWOOLEMODE) {
+                dump($rs);
+                return $this->result = $rs;
+            }
             return;
         } else {
             if (!$errorMessage) {
@@ -693,14 +723,17 @@ class RestnewServer {
         }
     }
 
-    public function handle($request=null, $response=null)
+    public function handle($request=null, $response=null,$http=null, $swooledbconfig =[])
     {
-        $this->request = $request;
-        $this->response = $response;
+
         $this->code = 200;
         $this->format = RestFormat::HTML;
         $this->result = '';
-        if($request){
+        if($request && SWOOLEMODE){
+            $this->swooledbconfig = $swooledbconfig;
+            $this->http = $http;
+            $this->request = $request;
+            $this->response = $response;
             $request_method = $request->server['request_method'];
             $request_uri = $request->server['request_uri'];
             $_GET = $request->get ?? [];
@@ -730,17 +763,20 @@ class RestnewServer {
             exit;
         }
 
-        if ($this->method == 'PUT' || $this->method == 'POST' || $this->method == 'PATCH') {
-            if ($request_method === 'POST' && $request->header['content-type'] === 'application/json') {
-                $body = $request->rawContent();
-                $this->foramt = RestFormat::JSON;
-                $this->data = empty($body) ? [] : json_decode($body, true);
-                $_POST = $this->data;
-            } else {
-                $this->data = $request->post ?? [];
-                $_POST = $this->data;
+        if(SWOOLEMODE){
+            if ($this->method == 'PUT' || $this->method == 'POST' || $this->method == 'PATCH') {
+                if ($request_method === 'POST' && $request->header['content-type'] === 'application/json') {
+                    $body = $request->rawContent();
+                    $this->foramt = RestFormat::JSON;
+                    $this->data = empty($body) ? [] : json_decode($body, true);
+                    $_POST = $this->data;
+                } else {
+                    $this->data = $request->post ?? [];
+                    $_POST = $this->data;
+                }
             }
         }
+
         if ($this->method == 'OPTIONS' && getallheaders()->Access - Control - Request - Headers) {
             $this->sendData($this->options());
         }
@@ -754,8 +790,13 @@ class RestnewServer {
 
             $obj = $newObj;
             $obj->server = $this;
-            $obj->request = $this->request;
-            $obj->response = $this->response;
+            if (SWOOLEMODE) {
+                \SwooleEloquent\Db::init($swooledbconfig);
+                $obj->request = $this->request;
+                $obj->response = $this->response;
+                $obj->swooledb = new \SwooleEloquent\Db();
+                $obj->http = $this->http;
+            }
 
             try {
                 $this->initClass($obj);
@@ -765,7 +806,6 @@ class RestnewServer {
                     $this->sendData($data);
                 } else {
                     $result = call_user_func_array(array($obj, $method), $params);
-
                     if ($result !== null) {
                         $this->sendData($result);
                     }

@@ -158,7 +158,7 @@ class RestServer
      *
      * @param string $mode The mode, either debug or production
      */
-    public function __construct(\Servit\Restsrv\Cfg\Config $config = null, $mode = 'debug', $realm = 'Rest Server')
+    public function __construct(Config $config = null, $mode = 'debug', $realm = 'Rest Server')
     {
         $this->mode = $mode;
         $this->realm = $realm;
