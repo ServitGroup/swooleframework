@@ -186,37 +186,52 @@ class RestnewServer {
 
     public function getPath()
     {
-        $this->query = $_GET;
-        $path = preg_replace('/\?.*$/', '', $_SERVER['REQUEST_URI']);
-        if ($this->root) {
-            $path = preg_replace('/^' . preg_quote($this->root, '/') . '/', '', $path);
-        }
+            $this->query = $_GET;
+            $uri =  isset($request->server['request_uri'])?$request->server['request_uri']:$_SERVER['REQUEST_URI'];
+            $path = preg_replace('/\?.*$/', '', $uri);
+            if ($this->root) {
+                $path = preg_replace('/^' . preg_quote($this->root, '/') . '/', '', $path);
+            }
 
-        $dot = strrpos($path, '.');
-        if ($dot !== false) {
-            $path_format = substr($path, $dot + 1);
-            foreach (RestFormat::$formats as $format => $mimetype) {
-                if ($path_format == $format) {
-                    $path = substr($path, 0, $dot);
-                    break;
+            $dot = strrpos($path, '.');
+            if ($dot !== false) {
+                $path_format = substr($path, $dot + 1);
+                foreach (RestFormat::$formats as $format => $mimetype) {
+                    if ($path_format == $format) {
+                        $path = substr($path, 0, $dot);
+                        break;
+                    }
                 }
             }
-        }
-        if ($this->rootPath) {
-            $path = str_replace($this->rootPath, '', $path);
-        }
+            if ($this->rootPath) {
+                $path = str_replace($this->rootPath, '', $path);
+            }
 
-        return ltrim($path, '/');
+            return ltrim($path, '/');
+
     }
 
     public function getMethod()
     {
-        if($this->request){
-            $method = $this->request->server['request_method'];
-        } else {
-            $method = $_SERVER['REQUEST_METHOD'] ?: 'GET';
-        }
-        return $method;
+            //   +server: array:10 [                   
+            //     "request_method" => "GET"           
+            //     "request_uri" => "/index"           
+            //     "path_info" => "/index"             
+            //     "request_time" => 1569307753        
+            //     "request_time_float" => 1569307753.6
+            //     "server_protocol" => "HTTP/1.1"     
+            //     "server_port" => 80                 
+            //     "remote_port" => 47580              
+            //     "remote_addr" => "127.0.0.1"        
+            //     "master_time" => 1569307753         
+            //   ]                                     
+
+            if($this->request){
+                $method = $this->request->server['request_method'];
+            } else {
+                $method = $_SERVER['REQUEST_METHOD'] ?: 'GET';
+            }
+            return $method;
     }
 
     public function getFormat()
@@ -735,21 +750,22 @@ class RestnewServer {
             $this->request = $request;
             $this->response = $response;
             $request_method = $request->server['request_method'];
-            $request_uri = $request->server['request_uri'];
+            $this->request_method = $request_method;
+            $this->request_uri = $request->server['request_uri'];
             $_GET = $request->get ?? [];
             $_COOKIE = $request->cookie ?? [];
             $_FILES = $request->files ?? [];
-            $_SERVER['REQUEST_URI'] = $request->server['request_uri'];
-            $_SERVER['REQUEST_METHOD'] = $request->server['request_method'];
-            $_SERVER['REMOTE_ADDR'] = $request->server['remote_addr'];
-            $_SERVER["PATH_INFO"] = $request->server["path_info"];
-            $_SERVER["REQUEST_TIME"] = $request->server["request_time"];
-            $_SERVER["REQUEST_TIME_FLOAT"] = $request->server["request_time_float"];
-            $_SERVER["SERVER_PORT"] = $request->server["server_port"];
-            $_SERVER["REMOTE_PORT"] = $request->server["remote_port"];
-            $_SERVER["MASTER_TIME"] = $request->server["master_time"];
-            $_SERVER["SERVER_PROTOCOL"] = $request->server["server_protocol"];
-            $_SERVER["SERVER_SOFTWARE"] = $request->server["server_software"];
+            $_SERVER['REQUEST_URI'] = isset($request->server['request_uri'])?$request->server['request_uri']:'';
+            $_SERVER['REQUEST_METHOD'] = isset($request->server['request_method'])?$request->server['request_method']:'';
+            $_SERVER['REMOTE_ADDR'] = isset($request->server['remote_addr'])?$request->server['remote_addr']:'';
+            $_SERVER["PATH_INFO"] = isset($request->server["path_info"])?$request->server["path_info"]:'';
+            $_SERVER["REQUEST_TIME"] = isset($request->server["request_time"])?$request->server["request_time"]:'';
+            $_SERVER["REQUEST_TIME_FLOAT"] = isset($request->server["request_time_float"])?$request->server["request_time_float"]:'';
+            $_SERVER["SERVER_PORT"] = isset($request->server["server_port"])?$request->server["server_port"]:'';
+            $_SERVER["REMOTE_PORT"] = isset($request->server["remote_port"])?$request->server["remote_port"]:'';
+            $_SERVER["MASTER_TIME"] = isset($request->server["master_time"])?$request->server["master_time"]:'';
+            $_SERVER["SERVER_PROTOCOL"] = isset($request->server["server_protocol"])?$request->server["server_protocol"]:'';
+            $_SERVER["SERVER_SOFTWARE"] = isset($request->server["server_software"])?$request->server["server_software"]:'';
             $_HEADER = $request->header;
         } else {
             $this->data = $this->getData();
